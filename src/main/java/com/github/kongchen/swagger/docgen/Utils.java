@@ -2,19 +2,12 @@ package com.github.kongchen.swagger.docgen;
 
 import com.github.jknack.handlebars.io.ClassPathTemplateLoader;
 import com.github.jknack.handlebars.io.FileTemplateLoader;
-import io.swagger.models.Model;
-import io.swagger.models.Operation;
-import io.swagger.models.Path;
-import io.swagger.models.Response;
-import io.swagger.models.Swagger;
-import io.swagger.models.Tag;
+import io.swagger.models.*;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * @author chekong on 14-11-25.
@@ -71,12 +64,26 @@ public class Utils {
             return;
         }
 
-        TreeMap<String, Path> sortedMap = new TreeMap<String, Path>();
         if (swagger.getPaths() == null) {
             return;
         }
-        sortedMap.putAll(swagger.getPaths());
-        swagger.paths(sortedMap);
+        List<Pair<String, Pair<String, Path>>> pathInfoList = new ArrayList<Pair<String, Pair<String, Path>>>();
+        Map<String, Path> paths = swagger.getPaths();
+        for (Map.Entry<String, Path> entry : paths.entrySet()) {
+            String pathKey = entry.getKey();
+            Path path = entry.getValue();
+            for (Operation operation : path.getOperations()) {
+                pathInfoList.add(Pair.of(operation.getSummary(), Pair.of(pathKey, path)));
+            }
+        }
+        Collections.sort(pathInfoList);
+
+        LinkedHashMap<String, Path> linkedHashMap = new LinkedHashMap<String, Path>();
+        for (Pair<String, Pair<String, Path>> pathInfo : pathInfoList) {
+            Pair<String, Path> pair = pathInfo.getRight();
+            linkedHashMap.put(pair.getLeft(), pair.getRight());
+        }
+        swagger.paths(linkedHashMap);
 
         for (Path path : swagger.getPaths().values()) {
             String methods[] = {"Get", "Delete", "Post", "Put", "Options", "Patch"};
